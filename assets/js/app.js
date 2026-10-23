@@ -1,3 +1,22 @@
+/* =====================================================================
+   ESPETTUS · cardápio digital
+   Depende de data.js (produtos, categorias, WHATSAPP)
+
+   Índice
+    1. Utilidades
+    2. Carrinho salvo
+    3. Navegação
+    4. Cards e categorias
+    5. Carrinho
+    6. Entrega e envio do pedido
+    7. Toast
+    8. Aberto agora
+    9. Banners (troca automática)
+   10. Iniciar
+   ===================================================================== */
+
+
+/* ---------- 1. UTILIDADES ---------- */
 const brl = v => v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 const $ = s => document.querySelector(s);
 const $$ = s => document.querySelectorAll(s);
@@ -5,7 +24,8 @@ const $$ = s => document.querySelectorAll(s);
 let carrinho = [];
 let filtroAtual = "todos";
 
-/* ---------- CARRINHO SALVO ---------- */
+
+/* ---------- 2. CARRINHO SALVO ---------- */
 const CHAVE_CARRINHO = "espettus-carrinho";
 
 function salvarCarrinho() {
@@ -22,7 +42,8 @@ function carregarCarrinho() {
     }
 }
 
-/* ---------- NAVEGAÇÃO ---------- */
+
+/* ---------- 3. NAVEGAÇÃO ---------- */
 function irPara(id) {
     $$(".pagina").forEach(p => p.classList.remove("ativa"));
     $("#" + id).classList.add("ativa");
@@ -45,15 +66,18 @@ document.addEventListener("click", e => {
 
         irPara(alvo.dataset.pagina);
     }
+
     const add = e.target.closest("[data-add]");
     if (add) adicionar(Number(add.dataset.add), add);
 });
 
-/* ---------- CARDS ---------- */
+
+/* ---------- 4. CARDS E CATEGORIAS ---------- */
 function cardProduto(p) {
+    const selo = p.popular ? '<span class="selo">Popular</span>' : "";
     const foto = p.img
-        ? `<div class="produto-foto"><img src="${p.img}" alt="${p.nome}" loading="lazy">${p.popular ? '<span class="selo">Popular</span>' : ""}</div>`
-        : `<div class="produto-foto vazia">${p.emoji || "🍽️"}${p.popular ? '<span class="selo">Popular</span>' : ""}</div>`;
+        ? `<div class="produto-foto"><img src="${p.img}" alt="${p.nome}" loading="lazy" decoding="async">${selo}</div>`
+        : `<div class="produto-foto vazia">${p.emoji || "🍽️"}${selo}</div>`;
 
     return `
     <article class="produto">
@@ -73,7 +97,6 @@ function renderLista(seletor, lista) {
     $(seletor).innerHTML = lista.map(cardProduto).join("");
 }
 
-/* ---------- CATEGORIAS ---------- */
 function renderFiltros() {
     const todos = [{ id: "todos", nome: "Todos" }, ...categorias];
     $("#filtros").innerHTML = todos.map(c =>
@@ -91,35 +114,36 @@ $("#filtros").addEventListener("click", e => {
     renderFiltros();
 });
 
-/* ---------- CARRINHO ---------- */
-function adicionar(id, btnElement = null) {
+
+/* ---------- 5. CARRINHO ---------- */
+function adicionar(id, btn = null) {
     const item = carrinho.find(i => i.id === id);
     item ? item.qtd++ : carrinho.push({ id, qtd: 1 });
-    
+
     atualizarBadge();
     toast(produtos.find(p => p.id === id).nome + " adicionado");
     if ($("#pedidos").classList.contains("ativa")) renderCarrinho();
 
-    // Animação do badge no cabeçalho
+    // animação do badge no cabeçalho
     const badge = $("#badge");
     badge.classList.remove("animar");
-    void badge.offsetWidth; // Força o reflow do navegador para reiniciar a animação
+    void badge.offsetWidth; // força o reflow para reiniciar a animação
     badge.classList.add("animar");
 
-    // Feedback no botão clicado
-    if (btnElement) {
-            // guarda o conteúdo original só na primeira vez (senão um 2º clique guardaria o "✔")
-            if (!btnElement.dataset.original) btnElement.dataset.original = btnElement.innerHTML;
+    // feedback no botão clicado
+    if (btn) {
+        // guarda o conteúdo original só na primeira vez (senão um 2º clique guardaria o "✔")
+        if (!btn.dataset.original) btn.dataset.original = btn.innerHTML;
 
-            clearTimeout(btnElement._timer); // cancela o retorno do clique anterior
-            btnElement.innerHTML = "✔";
-            btnElement.classList.add("sucesso");
+        clearTimeout(btn._timer); // cancela o retorno do clique anterior
+        btn.innerHTML = "✔";
+        btn.classList.add("sucesso");
 
-            btnElement._timer = setTimeout(() => {
-                btnElement.innerHTML = btnElement.dataset.original;
-                btnElement.classList.remove("sucesso");
-            }, 1000);
-        }
+        btn._timer = setTimeout(() => {
+            btn.innerHTML = btn.dataset.original;
+            btn.classList.remove("sucesso");
+        }, 1000);
+    }
 }
 
 function alterar(id, delta) {
@@ -129,6 +153,10 @@ function alterar(id, delta) {
     carrinho = carrinho.filter(i => i.qtd > 0);
     atualizarBadge();
     renderCarrinho();
+}
+
+function totalCarrinho() {
+    return carrinho.reduce((s, i) => s + produtos.find(p => p.id === i.id).preco * i.qtd, 0);
 }
 
 function atualizarBadge() {
@@ -141,10 +169,6 @@ function atualizarBadge() {
     $("#barra-total").textContent = brl(totalCarrinho());
 
     salvarCarrinho();
-}
-
-function totalCarrinho() {
-    return carrinho.reduce((s, i) => s + produtos.find(p => p.id === i.id).preco * i.qtd, 0);
 }
 
 function renderCarrinho() {
@@ -172,7 +196,8 @@ function renderCarrinho() {
         <button class="btn grande" onclick="finalizar()">Finalizar pelo WhatsApp</button>`;
 }
 
-/* ---------- ENTREGA ---------- */
+
+/* ---------- 6. ENTREGA E ENVIO DO PEDIDO ---------- */
 const valor = id => $("#" + id).value.trim();
 
 function marcarInvalido(ids) {
@@ -180,7 +205,7 @@ function marcarInvalido(ids) {
     $("#" + ids[0]).focus();
 }
 
-// tirar o vermelho assim que o cliente começa a corrigir
+// tira o vermelho assim que o cliente começa a corrigir
 document.addEventListener("input", e => e.target.classList.remove("invalido"));
 
 function finalizar() {
@@ -207,6 +232,7 @@ function finalizar() {
         return;
     }
 
+    // mensagem do WhatsApp
     const hora = new Date().getHours();
     const saudacao = hora < 12 ? "Bom dia" : hora < 18 ? "Boa tarde" : "Boa noite";
 
@@ -220,7 +246,7 @@ function finalizar() {
     msg += `\n🛒 *Total do Pedido: ${brl(totalCarrinho())}*\n`;
     msg += `\n👤 *Nome:* ${valor("cliente-nome")}`;
 
-        if (entrega) {
+    if (entrega) {
         const comp = valor("end-complemento");
         const ref = valor("end-referencia");
         msg += `\n🛵 *Entrega*`;
@@ -238,8 +264,8 @@ function finalizar() {
     if (obs) msg += `\n📝 *Obs:* ${obs}`;
 
     window.open(`https://wa.me/${WHATSAPP}?text=${encodeURIComponent(msg)}`, "_blank");
-    
-        // pedido enviado: limpa o carrinho e mostra a confirmação
+
+    // pedido enviado: limpa o carrinho e mostra a confirmação
     // (nome, endereço e pagamento ficam preenchidos para o próximo pedido)
     carrinho = [];
     atualizarBadge();
@@ -252,17 +278,20 @@ function finalizar() {
     toast("Pedido enviado!");
 }
 
-/* ---------- TOAST ---------- */
-let t;
+
+/* ---------- 7. TOAST ---------- */
+let timerToast;
+
 function toast(texto) {
     const el = $("#toast");
     el.textContent = texto;
     el.classList.add("mostrar");
-    clearTimeout(t);
-    t = setTimeout(() => el.classList.remove("mostrar"), 1800);
+    clearTimeout(timerToast);
+    timerToast = setTimeout(() => el.classList.remove("mostrar"), 1800);
 }
 
-/* ---------- ABERTO AGORA ---------- */
+
+/* ---------- 8. ABERTO AGORA ---------- */
 // [abre, fecha] em horas; 24 = meia-noite
 const HORARIOS = [[11, 14], [17, 24]];
 
@@ -281,7 +310,8 @@ function atualizarStatus() {
         : "Fechado agora" + (proxima ? " · abre às " + proxima[0] + "h" : "");
 }
 
-/* ---------- BANNERS: troca automática ---------- */
+
+/* ---------- 9. BANNERS (TROCA AUTOMÁTICA) ---------- */
 function iniciarBanners() {
     const faixa = $(".banners-faixa");
     if (!faixa) return;
@@ -358,11 +388,13 @@ function iniciarBanners() {
     reiniciar();
 }
 
-/* ---------- INICIAR ---------- */
+
+/* ---------- 10. INICIAR ---------- */
 carregarCarrinho();
 atualizarBadge();
 atualizarStatus();
 setInterval(atualizarStatus, 60000);
+
 renderLista("#grid-recomendados", produtos.filter(p => p.popular).slice(0, 4));
 renderLista("#grid-carnes", produtos.filter(p => p.categoria === "carnes"));
 renderLista("#grid-hamburgueres", produtos.filter(p => p.categoria === "hamburgueres"));
